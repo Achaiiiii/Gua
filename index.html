@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>加合蛙式興</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* 禁用滾動並置中 */
+    html, body {
+      height: 100%; margin: 0; overflow: hidden;
+    }
+    body {
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      background: linear-gradient(135deg, #e0f7fa, #a5d6a7);
+      font-family: 'Rubik', sans-serif;
+    }
+    /* 標題 */
+    h1 {
+      font-size: 2.2rem; color: #2e7d32; margin-bottom: 8px;
+      animation: title-pop 1s ease-out infinite alternate;
+    }
+    @keyframes title-pop {
+      from { transform: scale(1); text-shadow: none; }
+      to   { transform: scale(1.1); text-shadow: 0 0 8px rgba(46,125,50,0.7); }
+    }
+    /* 分數 */
+    .score-container {
+      background: rgba(43,87,59,0.85); padding: 6px 14px;
+      border-radius: 18px; color: #fff; font-size: 1rem;
+      margin-bottom: 12px;
+      animation: score-flash 2s ease-in-out infinite;
+    }
+    @keyframes score-flash {
+      0%,100% { background: rgba(43,87,59,0.85); }
+      50%     { background: rgba(67,130,87,0.85); }
+    }
+    /* 按鈕 */
+    .btn {
+      padding: 6px 14px; background: #66bb6a; color: #fff;
+      border: none; border-radius: 18px; font-size: 0.9rem;
+      cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: transform .2s, background .3s; margin-top: 18px;
+    }
+    .btn:hover { transform: translateY(-2px); background: #81c784; }
+    /* 棋盤 & 格子 */
+    .grid-container {
+      background: #8fbf87; border-radius: 12px;
+      padding: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    }
+    .grid-row { display: flex; }
+    .grid-cell {
+      width: 72px; height: 72px;
+      background: #c8e6c9; border-radius: 6px;
+      margin-right: 16px; margin-bottom: 16px;
+      display: flex; justify-content: center; align-items: center;
+      position: relative;
+    }
+    .grid-row:last-child .grid-cell { margin-bottom: 0; }
+    .grid-cell:last-child { margin-right: 0; }
+    /* Tile & 動畫 */
+    .tile {
+      width: 100%; height: 100%; border-radius: 6px;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 0.9rem; font-weight: 700; color: #1b5e20;
+      transform: scale(1);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .tile.pop { animation: tile-pop .2s forwards; }
+    @keyframes tile-pop { from{transform:scale(0)} to{transform:scale(1)} }
+    .tile.merged { animation: merge-breath .35s ease-out; }
+    @keyframes merge-breath{
+      0%,100%{transform:scale(1)}50%{transform:scale(1.15)}
+    }
+    /* 階段色 */
+    .tile-2   { background-image: url('1.png');
+  background-size: cover;
+  background-position: center;}
+    .tile-4   { background-image: url('2.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-8   { background-image: url('3.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-16  { background-image: url('4.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-32  { background-image: url('5.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-64  { background-image: url('6.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-128 { background-image: url('7.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-256 { background-image: url('8.png');
+  background-size: cover;
+  background-position: center; }
+    .tile-512 { background-image: url('9.png');
+  background-size: cover;
+  background-position: center; }
+  </style>
+</head>
+<body>
+
+  <h1>✨ 加合蛙式興 ✨</h1>
+  <div class="score-container">分數：<span id="score">0</span></div>
+
+  <div class="grid-container" id="grid-container">
+    <!-- 4×4 格子 -->
+    <div class="grid-row">
+      <div class="grid-cell" id="cell-0-0"></div>
+      <div class="grid-cell" id="cell-0-1"></div>
+      <div class="grid-cell" id="cell-0-2"></div>
+      <div class="grid-cell" id="cell-0-3"></div>
+    </div>
+    <div class="grid-row">
+      <div class="grid-cell" id="cell-1-0"></div>
+      <div class="grid-cell" id="cell-1-1"></div>
+      <div class="grid-cell" id="cell-1-2"></div>
+      <div class="grid-cell" id="cell-1-3"></div>
+    </div>
+    <div class="grid-row">
+      <div class="grid-cell" id="cell-2-0"></div>
+      <div class="grid-cell" id="cell-2-1"></div>
+      <div class="grid-cell" id="cell-2-2"></div>
+      <div class="grid-cell" id="cell-2-3"></div>
+    </div>
+    <div class="grid-row">
+      <div class="grid-cell" id="cell-3-0"></div>
+      <div class="grid-cell" id="cell-3-1"></div>
+      <div class="grid-cell" id="cell-3-2"></div>
+      <div class="grid-cell" id="cell-3-3"></div>
+    </div>
+  </div>
+
+  <button class="btn" id="restartBtn">重新遊玩</button>
+
+  <script>
+    /* ----------------------------------------------
+       全局變數
+    ---------------------------------------------- */
+    const SIZE = 4;
+    let board, score, mergedFlag;
+    const scoreEl     = document.getElementById("score");
+    const restartBtn  = document.getElementById("restartBtn");
+
+    /* ----------------------------------------------
+       啟動或重置遊戲
+    ---------------------------------------------- */
+    function initGame() {
+      board      = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+      mergedFlag = Array.from({length:SIZE},()=>Array(SIZE).fill(false));
+      score = 0; updateScore(0);
+      addTile(); addTile();
+      renderBoard(true); // 第一次渲染都 pop
+    }
+
+    /* ----------------------------------------------
+       加入新 tile（值 2）
+    ---------------------------------------------- */
+    function addTile() {
+      const empties = [];
+      board.forEach((r,i)=>r.forEach((v,j)=>{ if(!v) empties.push({i,j}); }));
+      if(!empties.length) return;
+      const {i,j} = empties[Math.floor(Math.random()*empties.length)];
+      board[i][j] = 2;
+      mergedFlag[i][j] = false;
+    }
+
+    /* ----------------------------------------------
+       渲染格子：就地更新 DOM，避免整格刪除造成閃爍
+       firstPop: 是否強制 pop 動畫
+    ---------------------------------------------- */
+    function renderBoard(firstPop=false) {
+      for (let i=0;i<SIZE;i++){
+        for (let j=0;j<SIZE;j++){
+          const cell = document.getElementById("cell-"+i+"-"+j);
+          const val  = board[i][j];
+          let tile = cell.firstElementChild;
+
+          if (val === 0) {
+            // 空格：若有舊 tile，移除
+            if (tile) cell.removeChild(tile);
+          } else {
+            const cls = "tile-"+val;
+            if (tile) {
+              // 存在：更新 class & 文本 & merged 動畫
+              if (!tile.classList.contains(cls)) {
+                // 值改變，只改 class / 文本，不 remove 整個元素
+                tile.className = "tile " + cls;
+                tile.classList.add("pop"); // 合併後新值 pop
+              }
+              // 合併呼吸
+              tile.classList.toggle("merged", mergedFlag[i][j]);
+            } else {
+              // 原本空的，new tile
+              tile = document.createElement("div");
+              tile.className = "tile " + cls + (firstPop ? " pop" : "");
+              if (mergedFlag[i][j]) tile.classList.add("merged");
+              cell.appendChild(tile);
+            }
+          }
+        }
+      }
+    }
+
+    /* ----------------------------------------------
+       返回階段文字
+    ---------------------------------------------- */
+    function stageName(v){
+      return {2:"卵",4:"卵團",8:"初生",16:"成長",
+              32:"後腳",64:"四腳",128:"幼蛙",256:"成蛙",
+              512:"呱"}[v]||v;
+    }
+
+    /* 更新分數 */
+    function updateScore(add){
+      score += add; scoreEl.textContent = score;
+    }
+
+    /* 檢查結束 */
+    function isGameOver(){
+      for(let i=0;i<SIZE;i++) for(let j=0;j<SIZE;j++)
+        if(board[i][j]===0) return false;
+      for(let i=0;i<SIZE;i++) for(let j=0;j<SIZE;j++){
+        const c=board[i][j];
+        if(j<SIZE-1 && board[i][j+1]===c) return false;
+        if(i<SIZE-1 && board[i+1][j]===c) return false;
+      }
+      return true;
+    }
+
+    /* 結束提示 */
+    function gameOver(){
+      setTimeout(()=>alert("遊戲結束！分數："+score),100);
+    }
+
+    /* 重置 mergedFlag */
+    function resetMerged(){
+      mergedFlag.forEach(r=>r.fill(false));
+    }
+
+    /* 移動合併核心 */
+    function move(dir){
+      resetMerged();
+      let moved=false;
+      const idx=[0,1,2,3],
+            rows=(dir==="down"?idx.slice().reverse():idx),
+            cols=(dir==="right"?idx.slice().reverse():idx);
+      rows.forEach(i=>cols.forEach(j=>{
+        const v=board[i][j];
+        if(!v) return;
+        let x=i, y=j;
+        while(true){
+          const nx=x+(dir==="up"?-1:dir==="down"?1:0),
+                ny=y+(dir==="left"?-1:dir==="right"?1:0);
+          if(nx<0||ny<0||nx>=SIZE||ny>=SIZE) break;
+          if(board[nx][ny]===0){
+            board[nx][ny]=v; board[x][y]=0;
+            x=nx; y=ny; moved=true;
+          }
+          else if(board[nx][ny]===v && !mergedFlag[nx][ny]){
+            const nv=v*2;
+            board[nx][ny]= nv>512?2:nv;
+            mergedFlag[nx][ny]=true;
+            board[x][y]=0;
+            updateScore(nv>512?2:nv);
+            moved=true; break;
+          } else break;
+        }
+      }));
+      return moved;
+    }
+
+    /* 鍵盤 & 觸控 */
+    document.addEventListener("keydown",e=>{
+      const mp={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down"};
+      const d=mp[e.key];
+      if(d && move(d)){
+        addTile(); renderBoard(); if(isGameOver()) gameOver();
+      }
+    });
+    let sx, sy;
+    const gc=document.getElementById("grid-container");
+    gc.addEventListener("touchstart",e=>{
+      if(e.touches.length!==1) return;
+      sx=e.touches[0].clientX; sy=e.touches[0].clientY;
+    });
+    gc.addEventListener("touchend",e=>{
+      if(e.changedTouches.length!==1) return;
+      const dx=e.changedTouches[0].clientX-sx,
+            dy=e.changedTouches[0].clientY-sy,
+            dir=Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up");
+      if(Math.max(Math.abs(dx),Math.abs(dy))>20 && move(dir)){
+        addTile(); renderBoard(); if(isGameOver()) gameOver();
+      }
+    });
+
+    /* 重新遊玩 */
+    restartBtn.addEventListener("click", initGame);
+
+    /* 啟動 */
+    initGame();
+  </script>
+</body>
+</html>
